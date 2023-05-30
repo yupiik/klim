@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
-public record CliKubernetesConfiguration(
+public record  CliKubernetesConfiguration(
         @Property(documentation = "Kubernetes API base.") String api,
         @Property(documentation = "If authenticated by token and not using a `kubeconfig`, the token to use.") String token,
         @Property(documentation = "SSL certificates for communication (not authentication).") String certificates,

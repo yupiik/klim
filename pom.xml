@@ -64,4 +64,33 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>native</id>
+      <build>
+        <plugins>
+          <plugin> <!-- mvn package -Pnative -DskipTests  -->
+            <groupId>org.apache.geronimo.arthur</groupId>
+            <artifactId>arthur-maven-plugin</artifactId>
+            <version>1.0.6</version>
+            <executions>
+              <execution>
+                <id>native</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>native-image</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <graalVersion>22.3.0.r17</graalVersion>
+              <main>io.yupiik.fusion.framework.api.main.Launcher</main>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
 </project>
