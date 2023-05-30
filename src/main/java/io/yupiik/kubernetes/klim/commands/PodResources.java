@@ -3,31 +3,24 @@ package io.yupiik.kubernetes.klim.commands;
 import io.yupiik.fusion.framework.build.api.cli.Command;
 import io.yupiik.fusion.framework.build.api.configuration.Property;
 import io.yupiik.fusion.framework.build.api.configuration.RootConfiguration;
-import io.yupiik.fusion.json.JsonMapper;
 import io.yupiik.fusion.kubernetes.client.KubernetesClient;
 import io.yupiik.kubernetes.klim.client.model.Metadata;
-import io.yupiik.kubernetes.klim.client.model.Namespace;
-import io.yupiik.kubernetes.klim.client.model.Namespaces;
 import io.yupiik.kubernetes.klim.client.model.Pod;
 import io.yupiik.kubernetes.klim.client.model.Pods;
 import io.yupiik.kubernetes.klim.client.model.TopPod;
 import io.yupiik.kubernetes.klim.client.model.TopPods;
 import io.yupiik.kubernetes.klim.configuration.CliKubernetesConfiguration;
+import io.yupiik.kubernetes.klim.service.KubernetesFriend;
 import io.yupiik.kubernetes.klim.service.resource.ContainerResources;
 import io.yupiik.kubernetes.klim.table.TableFormatter;
 
-import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -37,7 +30,6 @@ import java.util.stream.Stream;
 import static io.yupiik.kubernetes.klim.service.resource.ContainerResources.NoteLevel.WARNING;
 import static io.yupiik.kubernetes.klim.service.resource.ContainerResources.ResourceType.CPU;
 import static io.yupiik.kubernetes.klim.service.resource.ContainerResources.ResourceType.MEMORY;
-import static java.net.http.HttpResponse.BodyHandlers.ofString;
 import static java.util.Comparator.comparing;
 import static java.util.Locale.ROOT;
 import static java.util.Locale.US;
@@ -51,17 +43,17 @@ import static java.util.stream.Collectors.toMap;
 @Command(name = "pod-resources", description = "Lists and show resource usages compared to requests/limits set in descriptors.")
 public class PodResources implements Runnable {
     private final Configuration configuration;
-    private final JsonMapper jsonMapper;
+    private final KubernetesFriend kubernetesFriend;
 
-    public PodResources(final Configuration configuration, final JsonMapper jsonMapper) {
+    public PodResources(final Configuration configuration, final KubernetesFriend kubernetesFriend) {
         this.configuration = configuration;
-        this.jsonMapper = jsonMapper;
+        this.kubernetesFriend = kubernetesFriend;
     }
 
     @Override
     public void run() {
         try (final var k8s = configuration.k8s().client()) {
-            final var data = findNamespaces(k8s)
+            final var data = kubernetesFriend.findNamespaces(k8s)
                     .thenCompose(namespaces -> findAllPodData(k8s, namespaces))
                     .toCompletableFuture()
                     .get();
@@ -260,7 +252,7 @@ public class PodResources implements Runnable {
                                 }));
     }
 
-    private CompletableFuture<ArrayList<PodData>> findAllPodData(final KubernetesClient k8s, final List<String> namespaces) {
+    private CompletableFuture<List<PodData>> findAllPodData(final KubernetesClient k8s, final List<String> namespaces) {
         final var tops = new ArrayList<PodData>();
         return allOf(namespaces.stream()
                 .map(namespace -> findPodData(k8s, namespace)
@@ -275,7 +267,7 @@ public class PodResources implements Runnable {
     }
 
     private CompletionStage<Pods> findPods(final KubernetesClient k8s, final String namespace) {
-        return fetch(
+        return kubernetesFriend.fetch(
                 k8s, "/api/v1/namespaces/" + namespace + "/pods?" +
                         "limit=1000&" +
                         "fieldSelector=status.phase%3DRunning",
@@ -283,44 +275,9 @@ public class PodResources implements Runnable {
     }
 
     private CompletionStage<TopPods> findTopPerNamespace(final KubernetesClient k8s, final String namespace) {
-        return fetch(
+        return kubernetesFriend.fetch(
                 k8s, "/" + configuration.metricsApi() + "/namespaces/" + namespace + "/pods",
                 "Invalid top response: ", TopPods.class);
-    }
-
-    private CompletionStage<List<String>> findNamespaces(final KubernetesClient k8s) {
-        if (configuration.namespace() != null && !configuration.namespace().isBlank()) {
-            return completedFuture(List.of(configuration.namespace()));
-        }
-
-        return fetch(k8s, "/api/v1/namespaces?limit=1000", "Invalid namespace response: ", Namespaces.class)
-                .thenApply(n -> n.items().stream()
-                        .map(Namespace::metadata)
-                        .filter(Objects::nonNull)
-                        .map(Metadata::name)
-                        .sorted()
-                        .toList());
-    }
-
-
-    private <T> CompletionStage<T> fetch(final KubernetesClient client, final String path, final String error, final Class<T> expected) {
-        return client.sendAsync(
-                        HttpRequest.newBuilder()
-                                .header("accept", "application/json")
-                                .uri(URI.create("https://kubernetes.api" + path))
-                                .timeout(Duration.ofMinutes(1))
-                                .build(),
-                        ofString())
-                .thenApplyAsync(res -> {
-                    validateResponse(res, error);
-                    return jsonMapper.fromString(expected, res.body());
-                });
-    }
-
-    private void validateResponse(final HttpResponse<String> res, final String x) {
-        if (res.statusCode() != 200) {
-            throw new IllegalStateException(x + res + "\n" + res.body());
-        }
     }
 
     @RootConfiguration("-")

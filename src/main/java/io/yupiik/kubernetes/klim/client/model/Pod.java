@@ -7,11 +7,11 @@ import java.util.List;
 @JsonModel
 public record Pod(Metadata metadata, Spec spec) {
     @JsonModel
-    public record Spec(List<Container> containers) {
+    public record Spec(List<Container> initContainers, List<Container> containers) {
     }
 
     @JsonModel
-    public record Container(String name, Resources resources) {
+    public record Container(String name, String image, Resources resources) {
     }
 
     @JsonModel
