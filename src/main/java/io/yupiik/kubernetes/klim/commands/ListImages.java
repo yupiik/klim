@@ -7,6 +7,8 @@ import io.yupiik.fusion.kubernetes.client.KubernetesClient;
 import io.yupiik.kubernetes.klim.client.model.Cronjob;
 import io.yupiik.kubernetes.klim.client.model.Cronjobs;
 import io.yupiik.kubernetes.klim.client.model.Pod;
+import io.yupiik.kubernetes.klim.client.model.Pods;
+import io.yupiik.kubernetes.klim.client.model.Template;
 import io.yupiik.kubernetes.klim.client.model.Templates;
 import io.yupiik.kubernetes.klim.configuration.CliKubernetesConfiguration;
 import io.yupiik.kubernetes.klim.service.KubernetesFriend;
@@ -56,6 +58,12 @@ public class ListImages implements Runnable {
     }
 
     private CompletionStage<Collected> collect(final KubernetesClient k8s, final String namespace) {
+        // what ran
+        final var pods = kubernetesFriend.fetch(
+                        k8s, "/apis/apps/v1/namespaces/" + namespace + "/pods?limit=1000",
+                        "Invalid deployments response: ", Pods.class)
+                .toCompletableFuture();
+        // what can run - indeed there are overlap but enables to get more coverage
         final var deployments = kubernetesFriend.fetch(
                         k8s, "/apis/apps/v1/namespaces/" + namespace + "/deployments?limit=1000",
                         "Invalid deployments response: ", Templates.class)
@@ -79,21 +87,28 @@ public class ListImages implements Runnable {
                                 .toList()))
                 .toCompletableFuture();
         return allOf( // find all runtime by type - for now we ignore pod assuming there is no "pod without owner", can be added later on
-                deployments, statefulsets, daemonsets, cronjobs)
+                pods, deployments, statefulsets, daemonsets, cronjobs)
                 .thenApply(ready -> new Collected(
-                        Stream.of(deployments, statefulsets, daemonsets, cronjobs)
-                                .map(it -> it.getNow(null))
-                                .flatMap(this::findImages)
+                        Stream.concat(
+                                        pods.getNow(null).items().stream().map(Pod::spec).flatMap(this::findImages),
+                                        Stream.of(deployments, statefulsets, daemonsets, cronjobs)
+                                                .map(it -> it.getNow(null))
+                                                .flatMap(this::findImages))
                                 .collect(toSet())));
     }
 
     private Stream<String> findImages(final Templates templates) {
         return templates.items() == null ? Stream.empty() : templates.items().stream()
-                .flatMap(it -> Stream.of(
-                                it.spec().template().spec().initContainers(),
-                                it.spec().template().spec().containers())
-                        .filter(Objects::nonNull)
-                        .flatMap(c -> c.stream().map(Pod.Container::image)));
+                .map(Template::spec)
+                .map(Template.Spec::template)
+                .map(Pod::spec)
+                .flatMap(it -> findImages(it));
+    }
+
+    private Stream<String> findImages(final Pod.Spec it) {
+        return Stream.of(it.initContainers(), it.containers())
+                .filter(Objects::nonNull)
+                .flatMap(c -> c.stream().map(Pod.Container::image));
     }
 
     private CompletableFuture<Collected> collect(final KubernetesClient k8s, final List<String> namespaces) {
