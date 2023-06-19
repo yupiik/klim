@@ -3,6 +3,8 @@ package io.yupiik.kubernetes.klim.commands;
 import io.yupiik.fusion.framework.build.api.cli.Command;
 import io.yupiik.fusion.framework.build.api.configuration.Property;
 import io.yupiik.fusion.framework.build.api.configuration.RootConfiguration;
+import io.yupiik.fusion.framework.build.api.json.JsonModel;
+import io.yupiik.fusion.json.JsonMapper;
 import io.yupiik.fusion.kubernetes.client.KubernetesClient;
 import io.yupiik.kubernetes.klim.client.model.Cronjob;
 import io.yupiik.kubernetes.klim.client.model.Cronjobs;
@@ -30,10 +32,14 @@ import static java.util.stream.Collectors.toSet;
 public class ListImages implements Runnable {
     private final Configuration configuration;
     private final KubernetesFriend kubernetesFriend;
+    private final JsonMapper jsonMapper;
 
-    public ListImages(final Configuration configuration, final KubernetesFriend kubernetesFriend) {
+    public ListImages(final Configuration configuration,
+                      final KubernetesFriend kubernetesFriend,
+                      final JsonMapper jsonMapper) {
         this.configuration = configuration;
         this.kubernetesFriend = kubernetesFriend;
+        this.jsonMapper = jsonMapper;
     }
 
     @Override
@@ -45,11 +51,16 @@ public class ListImages implements Runnable {
                     .thenCompose(namespaces -> collect(k8s, namespaces))
                     .toCompletableFuture()
                     .get();
-            System.out.println("Collected images:");
-            data.images().stream()
-                    .sorted()
-                    .map(it -> "* " + it)
-                    .forEach(System.out::println);
+            switch (configuration.format()) {
+                case HUMAN_LIST -> {
+                    System.out.println("Collected images:");
+                    data.images().stream()
+                            .sorted()
+                            .map(it -> "* " + it)
+                            .forEach(System.out::println);
+                }
+                case JSON -> System.out.println(jsonMapper.toString(data));
+            }
         } catch (final ExecutionException e) {
             throw new IllegalStateException(e.getCause());
         } catch (final InterruptedException e) {
@@ -60,7 +71,7 @@ public class ListImages implements Runnable {
     private CompletionStage<Collected> collect(final KubernetesClient k8s, final String namespace) {
         // what ran
         final var pods = kubernetesFriend.fetch(
-                        k8s, "/apis/apps/v1/namespaces/" + namespace + "/pods?limit=1000",
+                        k8s, "/api/v1/namespaces/" + namespace + "/pods?limit=1000",
                         "Invalid deployments response: ", Pods.class)
                 .toCompletableFuture();
         // what can run - indeed there are overlap but enables to get more coverage
@@ -127,11 +138,16 @@ public class ListImages implements Runnable {
 
     @RootConfiguration("-")
     public record Configuration(
+            @Property(documentation = "Output format.", defaultValue = "ListImages.Format.HUMAN_LIST") Format format,
             @Property(documentation = "Namespace to query (if none all namespaces will be queried).") String namespace,
             @Property(documentation = "How to connect to Kubernetes cluster.", defaultValue = "new CliKubernetesConfiguration()") CliKubernetesConfiguration k8s) {
     }
 
-    private record Collected(
-            Set<String> images) {
+    public enum Format {
+        HUMAN_LIST, JSON
+    }
+
+    @JsonModel
+    public record Collected(Set<String> images) {
     }
 }
