@@ -3,9 +3,9 @@ package io.yupiik.kubernetes.klim.service;
 import io.yupiik.fusion.framework.api.scope.ApplicationScoped;
 import io.yupiik.fusion.json.JsonMapper;
 import io.yupiik.fusion.kubernetes.client.KubernetesClient;
-import io.yupiik.kubernetes.klim.client.model.Metadata;
-import io.yupiik.kubernetes.klim.client.model.Namespace;
-import io.yupiik.kubernetes.klim.client.model.Namespaces;
+import io.yupiik.kubernetes.klim.client.model.k8s.Metadata;
+import io.yupiik.kubernetes.klim.client.model.k8s.Namespace;
+import io.yupiik.kubernetes.klim.client.model.k8s.Namespaces;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
