@@ -66,6 +66,7 @@ import static java.net.http.HttpClient.Redirect.ALWAYS;
 import static java.net.http.HttpResponse.BodyHandlers.ofByteArrayConsumer;
 import static java.net.http.HttpResponse.BodyHandlers.ofString;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Comparator.comparing;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.CompletableFuture.completedStage;
@@ -494,9 +495,9 @@ public class ListImages implements Runnable {
     private void render(final Collected data) {
         final var output = switch (configuration.format()) {
             case HUMAN_LIST -> "Collected images:" + data.images().stream()
-                    .sorted()
-                    .map(it -> "* " + it)
-                    .collect(joining("\n"));
+                    .sorted(comparing(Image::name))
+                    .map(it -> "* " + (configuration.grype().enable() ? it.toString() : it.name()))
+                    .collect(joining("\n", "\n", ""));
             case JSON -> jsonMapper.toString(data);
         };
         System.out.println(output);
