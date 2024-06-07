@@ -254,7 +254,7 @@ under the License.
           <plugin> <!-- mvn package -Pnative -DskipTests  -->
             <groupId>org.apache.geronimo.arthur</groupId>
             <artifactId>arthur-maven-plugin</artifactId>
-            <version>1.0.6</version>
+            <version>1.0.8</version>
             <executions>
               <execution>
                 <id>native</id>
@@ -266,8 +266,8 @@ under the License.
             </executions>
             <configuration>
               <buildStaticImage>false</buildStaticImage>
-              <graalVersion>17.0.8</graalVersion>
-              <graalDownloadUrl>https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-17.0.8/graalvm-community-jdk-17.0.8_linux-x64_bin.tar.gz</graalDownloadUrl>
+              <graalVersion>21.0.1-graalce</graalVersion>
+<!--              <graalDownloadUrl>https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-17.0.8/graalvm-community-jdk-17.0.8_linux-x64_bin.tar.gz</graalDownloadUrl>-->
               <main>io.yupiik.fusion.framework.api.main.Launcher</main>
             </configuration>
           </plugin>
