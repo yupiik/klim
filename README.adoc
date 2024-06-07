@@ -12,23 +12,6 @@ Klim is a CLI to run some helper on Kubernetes.
 [source, java]
 ----
 @Command(name = "list-images", description = "Lists images and libraries found in running pods.")
-public record Configuration(
-            @Property(documentation = "Memory unit to use when rendering (respecting format).", defaultValue = "PodResources.Unit.Mi") Unit memoryUnit,
-            @Property(documentation = "Should comments be shown.", defaultValue = "true") boolean showComments,
-            @Property(documentation = "Output format.", defaultValue = "PodResources.Format.TABLE") Format format,
-            @Property(value = "limit-bound", documentation = "Warning limit. If a resource is over this (ratio between 0 and 1) value compared to its limit a warning will be emitted. Negative values disable this check.", defaultValue = "-1.") double limitBound,
-            @Property(value = "request-bound", documentation = "Warning limit. If a resource is over this (ratio between 0 and 1) value compared to its request a warning will be emitted. Negative values disable this check.", defaultValue = ".8") double requestBound,
-            @Property(documentation = "Metrics API base endpoint (in case it becomes stable to avoid to have to update immediately the binary).", defaultValue = "\"apis/metrics.k8s.io/v1beta1\"") String metricsApi,
-            @Property(documentation = "Namespace to query (if none all namespaces will be queried).") String namespace,
-            @Property(documentation = "How to connect to Kubernetes cluster.", defaultValue = "new CliKubernetesConfiguration()") CliKubernetesConfiguration k8s) {
-    }
-----
-
-=== List docker images
-
-[source, java]
-----
-@Command(name = "list-images", description = "Lists images and libraries found in running pods.")
 
 @RootConfiguration("-")
 public record Configuration( // todo: add a state management
