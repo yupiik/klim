@@ -62,7 +62,7 @@ public record Configuration(
 
 == Build
 
-Pre-requisite: Maven >= 3.8 and Java >= 17.
+Pre-requisite: Maven >= 3.8 and Java >= 21.
 
 == Release
 
