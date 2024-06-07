@@ -1,0 +1,88 @@
+= Klim
+
+image::https://github.com/yupiik/klim/actions/workflows/maven.yml/badge.svg?branch=master[Github CI]
+
+[abstract]
+Klim is a CLI to run some helper on Kubernetes.
+
+== Commands
+
+=== List docker images
+
+[source, java]
+----
+@Command(name = "list-images", description = "Lists images and libraries found in running pods.")
+public record Configuration(
+            @Property(documentation = "Memory unit to use when rendering (respecting format).", defaultValue = "PodResources.Unit.Mi") Unit memoryUnit,
+            @Property(documentation = "Should comments be shown.", defaultValue = "true") boolean showComments,
+            @Property(documentation = "Output format.", defaultValue = "PodResources.Format.TABLE") Format format,
+            @Property(value = "limit-bound", documentation = "Warning limit. If a resource is over this (ratio between 0 and 1) value compared to its limit a warning will be emitted. Negative values disable this check.", defaultValue = "-1.") double limitBound,
+            @Property(value = "request-bound", documentation = "Warning limit. If a resource is over this (ratio between 0 and 1) value compared to its request a warning will be emitted. Negative values disable this check.", defaultValue = ".8") double requestBound,
+            @Property(documentation = "Metrics API base endpoint (in case it becomes stable to avoid to have to update immediately the binary).", defaultValue = "\"apis/metrics.k8s.io/v1beta1\"") String metricsApi,
+            @Property(documentation = "Namespace to query (if none all namespaces will be queried).") String namespace,
+            @Property(documentation = "How to connect to Kubernetes cluster.", defaultValue = "new CliKubernetesConfiguration()") CliKubernetesConfiguration k8s) {
+    }
+----
+
+=== List docker images
+
+[source, java]
+----
+@Command(name = "list-images", description = "Lists images and libraries found in running pods.")
+
+@RootConfiguration("-")
+public record Configuration( // todo: add a state management
+         @Property(documentation = "Output format.", defaultValue = "ListImages.Format.HUMAN_LIST") Format format,
+         @Property(documentation = "Image listing source.", defaultValue = "ListImages.Source.CLUSTER") Source source,
+         @Property(documentation = "Chain with grype scanning, only works for source=REGISTRY.") GrypeConfiguration grype,
+         @Property(documentation = "Registry configuration when source=REGISTRY.", defaultValue = "new Registry()") RegistryConfiguration registry,
+         @Property(documentation = "Namespace to query (if none all namespaces will be queried) - for source=CLUSTER case.") String namespace,
+         @Property(documentation = "How to connect to Kubernetes cluster - for source=CLUSTER case.", defaultValue = "new CliKubernetesConfiguration()") CliKubernetesConfiguration k8s) {
+}
+----
+
+=== Pod resources
+
+[source, java]
+----
+@Command(name = "pod-resources", description = "Lists and show resource usages compared to requests/limits set in descriptors.")
+
+@RootConfiguration("-")
+public record Configuration(
+        @Property(documentation = "Memory unit to use when rendering (respecting format).", defaultValue = "PodResources.Unit.Mi") Unit memoryUnit,
+        @Property(documentation = "Should comments be shown.", defaultValue = "true") boolean showComments,
+        @Property(documentation = "Output format.", defaultValue = "PodResources.Format.TABLE") Format format,
+        @Property(value = "limit-bound", documentation = "Warning limit. If a resource is over this (ratio between 0 and 1) value compared to its limit a warning will be emitted. Negative values disable this check.", defaultValue = "-1.") double limitBound,
+        @Property(value = "request-bound", documentation = "Warning limit. If a resource is over this (ratio between 0 and 1) value compared to its request a warning will be emitted. Negative values disable this check.", defaultValue = ".8") double requestBound,
+        @Property(documentation = "Metrics API base endpoint (in case it becomes stable to avoid to have to update immediately the binary).", defaultValue = "\"apis/metrics.k8s.io/v1beta1\"") String metricsApi,
+        @Property(documentation = "Namespace to query (if none all namespaces will be queried).") String namespace,
+        @Property(documentation = "How to connect to Kubernetes cluster.", defaultValue = "new CliKubernetesConfiguration()") CliKubernetesConfiguration k8s) {
+}
+----
+
+== Build
+
+Pre-requisite: Maven >= 3.8 and Java >= 17.
+
+== Release
+
+Build and publish to central:
+
+[source, bash]
+----
+mvn release:prepare release:perform
+----
+
+Publish documentation on GitHub page:
+
+[source, bash]
+----
+git checkout -b <release-tag> <release-tag> && mvn clean package -Pgh-pages
+----
+
+Pubish release on GitHub by running in https://github.com/yupiik/yupiik.github.io project:
+
+[source, bash]
+----
+mvn yupiik-tools:synchronize-github-releases@klim -Psynchronize-github-releases
+----

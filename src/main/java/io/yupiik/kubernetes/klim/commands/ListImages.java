@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2024 - present - Yupiik SAS - https://www.yupiik.com
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package io.yupiik.kubernetes.klim.commands;
 
 import io.yupiik.fusion.framework.build.api.cli.Command;
@@ -655,12 +670,12 @@ public class ListImages implements Runnable {
 
     @RootConfiguration("-")
     public record Configuration( // todo: add a state management
-                                 @Property(documentation = "Output format.", defaultValue = "ListImages.Format.HUMAN_LIST") Format format,
-                                 @Property(documentation = "Image listing source.", defaultValue = "ListImages.Source.CLUSTER") Source source,
-                                 @Property(documentation = "Chain with grype scanning, only works for source=REGISTRY.") GrypeConfiguration grype,
-                                 @Property(documentation = "Registry configuration when source=REGISTRY.", defaultValue = "new Registry()") RegistryConfiguration registry,
-                                 @Property(documentation = "Namespace to query (if none all namespaces will be queried) - for source=CLUSTER case.") String namespace,
-                                 @Property(documentation = "How to connect to Kubernetes cluster - for source=CLUSTER case.", defaultValue = "new CliKubernetesConfiguration()") CliKubernetesConfiguration k8s) {
+             @Property(documentation = "Output format.", defaultValue = "ListImages.Format.HUMAN_LIST") Format format,
+             @Property(documentation = "Image listing source.", defaultValue = "ListImages.Source.CLUSTER") Source source,
+             @Property(documentation = "Chain with grype scanning, only works for source=REGISTRY.") GrypeConfiguration grype,
+             @Property(documentation = "Registry configuration when source=REGISTRY.", defaultValue = "new Registry()") RegistryConfiguration registry,
+             @Property(documentation = "Namespace to query (if none all namespaces will be queried) - for source=CLUSTER case.") String namespace,
+             @Property(documentation = "How to connect to Kubernetes cluster - for source=CLUSTER case.", defaultValue = "new CliKubernetesConfiguration()") CliKubernetesConfiguration k8s) {
     }
 
     public enum Source {
