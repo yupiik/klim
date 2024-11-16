@@ -32,7 +32,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: |
-            /home/runner/work/fusion/fusion/.m2
+            /home/runner/work/klim/klim/.m2
           key: m2_repository
       - name: Set up JDK
         uses: actions/setup-java@v4.2.1
@@ -44,7 +44,7 @@ jobs:
           mvn --show-version org.apache.maven.plugins:maven-wrapper-plugin:3.3.1:wrapper "-Dmaven=4.0.0-alpha-13"
           ./mvnw install --errors --batch-mode --show-version
       - name: Remove Snapshots Before Caching
-        run: find /home/runner/work/fusion/fusion/.m2 -name '*SNAPSHOT' | xargs rm -Rf
+        run: find /home/runner/work/klim/klim/.m2 -name '*SNAPSHOT' | xargs rm -Rf
   security_audit:
     name: Security Audit
     runs-on: ubuntu-22.04
