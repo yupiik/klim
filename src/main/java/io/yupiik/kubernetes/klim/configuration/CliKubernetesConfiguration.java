@@ -36,14 +36,14 @@ public record  CliKubernetesConfiguration(
         @Property(documentation = "If authenticated by a X509 client certificate, the certificate.") String privateKeyCertificate,
         @Property(documentation = "Should SSL error be ignored for communication.") boolean skipTls,
         @Property(documentation = "A `kubeconfig` path.") String kubeconfig,
-        @Property(documentation = "Java HTTP Client HTTP version to use. It can be useful to set `HTTP_1_1` instead of default `HTTP_2` for debugging purposes (error are more explicit for example).") String httpVersion) {
+        @Property(documentation = "Java HTTP Client HTTP version to use. It can be useful to set `HTTP_1_1` instead of default `HTTP_2` for debugging purposes (error are more explicit for example).", defaultValue = "\"HTTP_2\"") String httpVersion) {
     public Path kubeconfigPath() {
-        if ((token != null && !token.isBlank()) || (privateKey != null && !privateKey.isBlank())) {
-            return null;
-        }
-
         if (kubeconfig != null && !kubeconfig.isBlank()) {
             return Path.of(kubeconfig);
+        }
+
+        if ((token != null && !token.isBlank()) || (privateKey != null && !privateKey.isBlank())) {
+            return null;
         }
 
         final var defaultValue = Path.of(System.getProperty("klim.home", System.getProperty("user.home", "."))).resolve(".kube/config");
@@ -59,7 +59,7 @@ public record  CliKubernetesConfiguration(
         return new KubernetesClient(new KubernetesClientConfiguration()
                 .setKubeconfig(kubeconfigPath())
                 .setClientCustomizer(c -> c.version(HttpClient.Version.valueOf(httpVersion().replace('-', '_').replace('.', '_'))))
-                .setToken(ofNullable(token()).orElse("ignore_token_file_if_missing_" + Instant.now().toEpochMilli()))
+                .setToken(token())
                 .setPrivateKey(privateKey())
                 .setPrivateKeyCertificate(privateKeyCertificate())
                 .setCertificates(certificates())
