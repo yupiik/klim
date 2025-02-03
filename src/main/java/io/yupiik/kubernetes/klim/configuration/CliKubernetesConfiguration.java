@@ -19,6 +19,7 @@ import io.yupiik.fusion.framework.build.api.configuration.Property;
 import io.yupiik.fusion.kubernetes.client.KubernetesClient;
 import io.yupiik.fusion.kubernetes.client.KubernetesClientConfiguration;
 
+import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -34,14 +35,15 @@ public record  CliKubernetesConfiguration(
         @Property(documentation = "If authenticated by a X509 client certificate, the private key.") String privateKey,
         @Property(documentation = "If authenticated by a X509 client certificate, the certificate.") String privateKeyCertificate,
         @Property(documentation = "Should SSL error be ignored for communication.") boolean skipTls,
-        @Property(documentation = "A `kubeconfig` path.") String kubeconfig) {
+        @Property(documentation = "A `kubeconfig` path.") String kubeconfig,
+        @Property(documentation = "Java HTTP Client HTTP version to use. It can be useful to set `HTTP_1_1` instead of default `HTTP_2` for debugging purposes (error are more explicit for example).", defaultValue = "\"HTTP_2\"") String httpVersion) {
     public Path kubeconfigPath() {
-        if ((token != null && !token.isBlank()) || (privateKey != null && !privateKey.isBlank())) {
-            return null;
-        }
-
         if (kubeconfig != null && !kubeconfig.isBlank()) {
             return Path.of(kubeconfig);
+        }
+
+        if ((token != null && !token.isBlank()) || (privateKey != null && !privateKey.isBlank())) {
+            return null;
         }
 
         final var defaultValue = Path.of(System.getProperty("klim.home", System.getProperty("user.home", "."))).resolve(".kube/config");
@@ -56,7 +58,8 @@ public record  CliKubernetesConfiguration(
         final var executor = Executors.newCachedThreadPool();
         return new KubernetesClient(new KubernetesClientConfiguration()
                 .setKubeconfig(kubeconfigPath())
-                .setToken(ofNullable(token()).orElse("ignore_token_file_if_missing_" + Instant.now().toEpochMilli()))
+                .setClientCustomizer(c -> c.version(HttpClient.Version.valueOf(httpVersion().replace('-', '_').replace('.', '_'))))
+                .setToken(token())
                 .setPrivateKey(privateKey())
                 .setPrivateKeyCertificate(privateKeyCertificate())
                 .setCertificates(certificates())
