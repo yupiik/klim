@@ -55,7 +55,7 @@
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <fusion.version>1.0.23-SNAPSHOT</fusion.version>
+    <fusion.version>1.0.23</fusion.version>
   </properties>
 
   <dependencies>
