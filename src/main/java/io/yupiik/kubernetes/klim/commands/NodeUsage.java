@@ -109,8 +109,8 @@ public class NodeUsage implements Runnable {
                                 .map(it -> Stream.of(
                                                 it.node().metadata().name(),
                                                 it.pods().size(),
-                                                String.format("%.2f%%", it.cpuUsage()),
-                                                String.format("%.2f%%", it.memoryUsage()),
+                                                String.format("%.2f%%", it.cpuUsage() * 100),
+                                                String.format("%.2f%%", it.memoryUsage() * 100),
                                                 metadata(it))
                                         .map(String::valueOf)
                                         .toList()))
