@@ -24,6 +24,7 @@ import io.yupiik.kubernetes.klim.client.model.k8s.Pod;
 import io.yupiik.kubernetes.klim.client.model.k8s.Pods;
 import io.yupiik.kubernetes.klim.configuration.CliKubernetesConfiguration;
 import io.yupiik.kubernetes.klim.service.KubernetesFriend;
+import io.yupiik.kubernetes.klim.service.NodeService;
 import io.yupiik.kubernetes.klim.service.UnitFormatter;
 import io.yupiik.kubernetes.klim.table.TableFormatter;
 
@@ -44,11 +45,14 @@ public class NodeUsage implements Runnable {
     private final Configuration configuration;
     private final KubernetesFriend kubernetesFriend;
     private final UnitFormatter unitFormatter;
+    private final NodeService nodeService;
 
-    public NodeUsage(final Configuration configuration, final KubernetesFriend kubernetesFriend, final UnitFormatter unitFormatter) {
+    public NodeUsage(final Configuration configuration, final KubernetesFriend kubernetesFriend,
+                     final UnitFormatter unitFormatter, final NodeService nodeService) {
         this.configuration = configuration;
         this.kubernetesFriend = kubernetesFriend;
         this.unitFormatter = unitFormatter;
+        this.nodeService = nodeService;
     }
 
     @Override
@@ -103,50 +107,10 @@ public class NodeUsage implements Runnable {
                                                 it.pods().size(),
                                                 String.format(US, "%.2f%%", it.cpuUsage() * 100),
                                                 String.format(US, "%.2f%%", it.memoryUsage() * 100),
-                                                metadata(it))
+                                                nodeService.metadata(it.node()))
                                         .map(String::valueOf)
                                         .toList()))
                 .toList();
-    }
-
-    private String metadata(final AggregatedNode node) {
-        final var labels = node.node().metadata().labels();
-        if (labels == null) {
-            return "";
-        }
-
-        var instanceType = labels.get("node.kubernetes.io/instance-type");
-        if (instanceType == null) {
-            final var type = labels.get("karpenter.k8s.aws/instance-family");
-            final var size = labels.get("karpenter.k8s.aws/instance-size");
-            if (type != null || size != null) {
-                instanceType = type + '.' + size;
-            }
-        }
-        final var capacityType = labels.get("karpenter.sh/capacity-type");
-        final var nodePool = labels.get("karpenter.sh/nodepool");
-
-        if (instanceType == null && capacityType == null && nodePool == null) {
-            return "";
-        }
-
-        final var result = new StringBuilder();
-        if (instanceType != null) {
-            result.append("instance=").append(instanceType);
-        }
-        if (capacityType != null) {
-            if (!result.isEmpty()) {
-                result.append(", ");
-            }
-            result.append("type=").append(capacityType);
-        }
-        if (nodePool != null) {
-            if (!result.isEmpty()) {
-                result.append(", ");
-            }
-            result.append("pool=").append(nodePool);
-        }
-        return result.toString();
     }
 
     private CompletableFuture<List<Pod>> findAllPodData(final KubernetesClient k8s, final List<String> namespaces) {
