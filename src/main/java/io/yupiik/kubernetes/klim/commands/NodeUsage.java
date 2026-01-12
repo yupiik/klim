@@ -18,24 +18,17 @@ package io.yupiik.kubernetes.klim.commands;
 import io.yupiik.fusion.framework.build.api.cli.Command;
 import io.yupiik.fusion.framework.build.api.configuration.Property;
 import io.yupiik.fusion.framework.build.api.configuration.RootConfiguration;
-import io.yupiik.fusion.framework.build.api.json.JsonModel;
 import io.yupiik.fusion.kubernetes.client.KubernetesClient;
-import io.yupiik.kubernetes.klim.client.model.k8s.Metadata;
 import io.yupiik.kubernetes.klim.client.model.k8s.Node;
 import io.yupiik.kubernetes.klim.client.model.k8s.Pod;
 import io.yupiik.kubernetes.klim.client.model.k8s.Pods;
 import io.yupiik.kubernetes.klim.configuration.CliKubernetesConfiguration;
 import io.yupiik.kubernetes.klim.service.KubernetesFriend;
 import io.yupiik.kubernetes.klim.service.UnitFormatter;
-import io.yupiik.kubernetes.klim.service.resource.ContainerResources;
 import io.yupiik.kubernetes.klim.table.TableFormatter;
 
-import java.io.Serializable;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -45,7 +38,6 @@ import static java.util.Comparator.comparing;
 import static java.util.Locale.US;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.joining;
 
 @Command(name = "node-usage", description = "Show number of pod and resource usage per node, ideal to identify overallocated Karpenter nodes.")
 public class NodeUsage implements Runnable {
@@ -109,8 +101,8 @@ public class NodeUsage implements Runnable {
                                 .map(it -> Stream.of(
                                                 it.node().metadata().name(),
                                                 it.pods().size(),
-                                                String.format("%.2f%%", it.cpuUsage() * 100),
-                                                String.format("%.2f%%", it.memoryUsage() * 100),
+                                                String.format(US, "%.2f%%", it.cpuUsage() * 100),
+                                                String.format(US, "%.2f%%", it.memoryUsage() * 100),
                                                 metadata(it))
                                         .map(String::valueOf)
                                         .toList()))
