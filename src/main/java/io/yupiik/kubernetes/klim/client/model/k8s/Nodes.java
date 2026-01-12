@@ -20,5 +20,5 @@ import io.yupiik.fusion.framework.build.api.json.JsonModel;
 import java.util.List;
 
 @JsonModel
-public record Namespaces(List<MetadataOnly> items) {
+public record Nodes(List<Node> items) {
 }

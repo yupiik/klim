@@ -673,9 +673,9 @@ public class ListImages implements Runnable {
              @Property(documentation = "Output format.", defaultValue = "ListImages.Format.HUMAN_LIST") Format format,
              @Property(documentation = "Image listing source.", defaultValue = "ListImages.Source.CLUSTER") Source source,
              @Property(documentation = "Chain with grype scanning, only works for source=REGISTRY.") GrypeConfiguration grype,
-             @Property(documentation = "Registry configuration when source=REGISTRY.", defaultValue = "new Registry()") RegistryConfiguration registry,
+             @Property(documentation = "Registry configuration when source=REGISTRY.") RegistryConfiguration registry,
              @Property(documentation = "Namespace to query (if none all namespaces will be queried) - for source=CLUSTER case.") String namespace,
-             @Property(documentation = "How to connect to Kubernetes cluster - for source=CLUSTER case.", defaultValue = "new CliKubernetesConfiguration()") CliKubernetesConfiguration k8s) {
+             @Property(documentation = "How to connect to Kubernetes cluster - for source=CLUSTER case.") CliKubernetesConfiguration k8s) {
     }
 
     public enum Source {

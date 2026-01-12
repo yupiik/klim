@@ -20,9 +20,9 @@ import io.yupiik.fusion.framework.build.api.json.JsonModel;
 import java.util.List;
 
 @JsonModel
-public record Pod(Metadata metadata, Spec spec) {
+public record Pod(Metadata metadata, Spec spec, Status status) {
     @JsonModel
-    public record Spec(List<Container> initContainers, List<Container> containers) {
+    public record Spec(List<Container> initContainers, List<Container> containers, String nodeName) {
     }
 
     @JsonModel
@@ -37,5 +37,17 @@ public record Pod(Metadata metadata, Spec spec) {
     @JsonModel
     public record Bounds(String cpu, String memory) {
         public static final Bounds EMPTY = new Bounds("", "");
+    }
+
+    @JsonModel
+    public record Status(List<ContainerStatus> containerStatuses) {
+    }
+
+    @JsonModel
+    public record ContainerStatus(AllocatedResources allocatedResources) {
+    }
+
+    @JsonModel
+    public record AllocatedResources(String cpu, String memory) {
     }
 }
