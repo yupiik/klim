@@ -17,6 +17,15 @@ package io.yupiik.kubernetes.klim.client.model.k8s;
 
 import io.yupiik.fusion.framework.build.api.json.JsonModel;
 
+import java.util.List;
+
 @JsonModel
-public record Namespace(Metadata metadata) {
+public record Node(Metadata metadata, NodeStatus status) {
+    @JsonModel
+    public record NodeStatus(Allocatable allocatable) {
+    }
+
+    @JsonModel
+    public record Allocatable(String cpu, String memory, String pods) {
+    }
 }

@@ -26,12 +26,12 @@ import io.yupiik.kubernetes.klim.client.model.k8s.TopPod;
 import io.yupiik.kubernetes.klim.client.model.k8s.TopPods;
 import io.yupiik.kubernetes.klim.configuration.CliKubernetesConfiguration;
 import io.yupiik.kubernetes.klim.service.KubernetesFriend;
+import io.yupiik.kubernetes.klim.service.UnitFormatter;
 import io.yupiik.kubernetes.klim.service.resource.ContainerResources;
 import io.yupiik.kubernetes.klim.table.TableFormatter;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -59,10 +59,12 @@ import static java.util.stream.Collectors.toMap;
 public class PodResources implements Runnable {
     private final Configuration configuration;
     private final KubernetesFriend kubernetesFriend;
+    private final UnitFormatter unitFormatter;
 
-    public PodResources(final Configuration configuration, final KubernetesFriend kubernetesFriend) {
+    public PodResources(final Configuration configuration, final KubernetesFriend kubernetesFriend, final UnitFormatter unitFormatter) {
         this.configuration = configuration;
         this.kubernetesFriend = kubernetesFriend;
+        this.unitFormatter = unitFormatter;
     }
 
     @Override
@@ -78,7 +80,7 @@ public class PodResources implements Runnable {
                             .thenComparing(ContainerResources::pod))
                     .toList();
 
-            final var includeUnits = configuration.format() != Format.CSV;
+            final var includeUnits = configuration.format() != UnitFormatter.Format.CSV;
             final var cpuFormat = new DecimalFormat("##.###", DecimalFormatSymbols.getInstance(US));
             final var outputLines = Stream.concat(
                             Stream.of(Stream.concat(
@@ -89,12 +91,12 @@ public class PodResources implements Runnable {
                                     .map(it -> Stream.concat(
                                                     Stream.of(
                                                             it.namespace(), it.pod(), it.container(),
-                                                            formatCpu(it.cpuRequest(), cpuFormat),
-                                                            formatCpu(it.cpuLimit(), cpuFormat),
-                                                            formatCpu(it.cpuUsage(), cpuFormat),
-                                                            formatMemory(it.memoryRequest(), includeUnits),
-                                                            formatMemory(it.memoryLimit(), includeUnits),
-                                                            formatMemory(it.memoryUsage(), includeUnits)),
+                                                            unitFormatter.formatCpu(it.cpuRequest(), cpuFormat),
+                                                            unitFormatter.formatCpu(it.cpuLimit(), cpuFormat),
+                                                            unitFormatter.formatCpu(it.cpuUsage(), cpuFormat),
+                                                            unitFormatter.formatMemory(it.memoryRequest(), includeUnits, configuration.memoryUnit()),
+                                                            unitFormatter.formatMemory(it.memoryLimit(), includeUnits, configuration.memoryUnit()),
+                                                            unitFormatter.formatMemory(it.memoryUsage(), includeUnits, configuration.memoryUnit())),
                                                     configuration.showComments() ?
                                                             Stream.of(it.notes().stream().map(this::format).collect(joining(" "))) :
                                                             Stream.empty())
@@ -112,20 +114,6 @@ public class PodResources implements Runnable {
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-    }
-
-    private String formatCpu(final double value, final NumberFormat format) {
-        if (value < 0) {
-            return "";
-        }
-        return format.format(value);
-    }
-
-    private String formatMemory(final long value, final boolean keepUnit) {
-        if (value < 0) {
-            return "";
-        }
-        return (long) (value * 1. / configuration.memoryUnit().factor) + (keepUnit ? configuration.memoryUnit().name() : "");
     }
 
     private String format(final ContainerResources.Note note) {
@@ -174,13 +162,13 @@ public class PodResources implements Runnable {
                             .map(Pod.Container::resources)
                             .orElse(Pod.Resources.EMPTY);
 
-                    final var cpuRequest = pod.requests() == null ? -1 : normalizeCpuInCore(pod.requests().cpu());
-                    final var cpuLimit = pod.limits() == null ? -1 : normalizeCpuInCore(pod.limits().cpu());
-                    final var cpu = normalizeCpuInCore(top.cpu());
+                    final var cpuRequest = pod.requests() == null ? -1 : unitFormatter.normalizeCpuInCore(pod.requests().cpu());
+                    final var cpuLimit = pod.limits() == null ? -1 : unitFormatter.normalizeCpuInCore(pod.limits().cpu());
+                    final var cpu = unitFormatter.normalizeCpuInCore(top.cpu());
 
-                    final var memoryRequest = pod.requests() == null ? -1 : normalizeMemoryInBytes(pod.requests().memory());
-                    final var memoryLimit = pod.limits() == null ? -1 : normalizeMemoryInBytes(pod.limits().memory());
-                    final var memory = normalizeMemoryInBytes(top.memory());
+                    final var memoryRequest = pod.requests() == null ? -1 : unitFormatter.normalizeMemoryInBytes(pod.requests().memory());
+                    final var memoryLimit = pod.limits() == null ? -1 : unitFormatter.normalizeMemoryInBytes(pod.limits().memory());
+                    final var memory = unitFormatter.normalizeMemoryInBytes(top.memory());
 
                     return new ContainerResources(
                             meta.namespace(), meta.name(), container,
@@ -214,43 +202,6 @@ public class PodResources implements Runnable {
         }
 
         return notes;
-    }
-
-    private long normalizeMemoryInBytes(final String memory) {
-        if (memory == null || memory.isBlank()) {
-            return -1; // means not set
-        }
-        final var builder = readAlphaSuffix(memory);
-        if (builder.isEmpty()) {
-            return (long) Double.parseDouble(memory); // support 129e6 case for ex
-        }
-        return (long) (Double.parseDouble(memory.substring(0, memory.length() - builder.length())) *
-                Unit.valueOf(builder.reverse().toString()).factor);
-    }
-
-    private double normalizeCpuInCore(final String cpu) {
-        if (cpu == null || cpu.isBlank()) {
-            return -1; // means not set
-        }
-
-        final var builder = readAlphaSuffix(cpu);
-        if (builder.isEmpty() || builder.length() > 1 /* only DecimalSI case, not BinarySI one */) {
-            return (long) Double.parseDouble(cpu);
-        }
-
-        final var unit = Unit.valueOf(builder.reverse().toString());
-        final var value = Double.parseDouble(cpu.substring(0, cpu.length() - builder.length()));
-        return value * unit.factor;
-    }
-
-    private StringBuilder readAlphaSuffix(final String memory) {
-        final var builder = new StringBuilder();
-        int idx = memory.length() - 1;
-        while (Character.isAlphabetic(memory.charAt(idx))) {
-            builder.append(memory.charAt(idx));
-            idx--;
-        }
-        return builder;
     }
 
     private CompletionStage<List<PodData>> findPodData(final KubernetesClient k8s, final String namespace) {
@@ -297,29 +248,14 @@ public class PodResources implements Runnable {
 
     @RootConfiguration("-")
     public record Configuration(
-            @Property(documentation = "Memory unit to use when rendering (respecting format).", defaultValue = "PodResources.Unit.Mi") Unit memoryUnit,
+            @Property(documentation = "Memory unit to use when rendering (respecting format).", defaultValue = "io.yupiik.kubernetes.klim.service.UnitFormatter.Unit.Mi") UnitFormatter.Unit memoryUnit,
             @Property(documentation = "Should comments be shown.", defaultValue = "true") boolean showComments,
-            @Property(documentation = "Output format.", defaultValue = "PodResources.Format.TABLE") Format format,
+            @Property(documentation = "Output format.", defaultValue = "io.yupiik.kubernetes.klim.service.UnitFormatter.Format.TABLE") UnitFormatter.Format format,
             @Property(value = "limit-bound", documentation = "Warning limit. If a resource is over this (ratio between 0 and 1) value compared to its limit a warning will be emitted. Negative values disable this check.", defaultValue = "-1.") double limitBound,
             @Property(value = "request-bound", documentation = "Warning limit. If a resource is over this (ratio between 0 and 1) value compared to its request a warning will be emitted. Negative values disable this check.", defaultValue = ".8") double requestBound,
             @Property(documentation = "Metrics API base endpoint (in case it becomes stable to avoid to have to update immediately the binary).", defaultValue = "\"apis/metrics.k8s.io/v1beta1\"") String metricsApi,
             @Property(documentation = "Namespace to query (if none all namespaces will be queried).") String namespace,
-            @Property(documentation = "How to connect to Kubernetes cluster.", defaultValue = "new CliKubernetesConfiguration()") CliKubernetesConfiguration k8s) {
-    }
-
-    public enum Format {
-        CSV, TABLE
-    }
-
-    public enum Unit { // https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource
-        Ki(1024), Mi(1_048_576), Gi(1_073_741_824), Ti(1_099_511_627_776L), Pi(1_125_899_906_842_624L), Ei(1_152_921_504_606_846_976L),
-        n(.000_000_001), m(.001), k(1_000), M(1_000_000), G(1_000_000_000), T(1_000_000_000_000L), P(1_000_000_000_000_000L), E(1_000_000_000_000_000_000L);
-
-        private final double factor;
-
-        Unit(double factor) {
-            this.factor = factor;
-        }
+            @Property(documentation = "How to connect to Kubernetes cluster.") CliKubernetesConfiguration k8s) {
     }
 
     private record PodData(TopPod top, Pod pod) {

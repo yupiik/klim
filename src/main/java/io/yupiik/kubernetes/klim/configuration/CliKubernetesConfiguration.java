@@ -16,6 +16,9 @@
 package io.yupiik.kubernetes.klim.configuration;
 
 import io.yupiik.fusion.framework.build.api.configuration.Property;
+import io.yupiik.fusion.httpclient.core.ExtendedHttpClient;
+import io.yupiik.fusion.httpclient.core.ExtendedHttpClientConfiguration;
+import io.yupiik.fusion.httpclient.core.listener.impl.ExchangeLogger;
 import io.yupiik.fusion.kubernetes.client.KubernetesClient;
 import io.yupiik.fusion.kubernetes.client.KubernetesClientConfiguration;
 
@@ -23,8 +26,11 @@ import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
+import static java.time.Clock.systemUTC;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
@@ -35,6 +41,7 @@ public record  CliKubernetesConfiguration(
         @Property(documentation = "If authenticated by a X509 client certificate, the private key.") String privateKey,
         @Property(documentation = "If authenticated by a X509 client certificate, the certificate.") String privateKeyCertificate,
         @Property(documentation = "Should SSL error be ignored for communication.") boolean skipTls,
+        @Property(documentation = "Should exchanges be logged.") boolean log,
         @Property(documentation = "A `kubeconfig` path.") String kubeconfig,
         @Property(documentation = "Java HTTP Client HTTP version to use. It can be useful to set `HTTP_1_1` instead of default `HTTP_2` for debugging purposes (error are more explicit for example).", defaultValue = "\"HTTP_2\"") String httpVersion) {
     public Path kubeconfigPath() {
@@ -58,7 +65,19 @@ public record  CliKubernetesConfiguration(
         final var executor = Executors.newCachedThreadPool();
         return new KubernetesClient(new KubernetesClientConfiguration()
                 .setKubeconfig(kubeconfigPath())
-                .setClientCustomizer(c -> c.version(HttpClient.Version.valueOf(httpVersion().replace('-', '_').replace('.', '_'))))
+                .setClientWrapper(it -> {
+                    if (log()) {
+                        return new ExtendedHttpClient(new ExtendedHttpClientConfiguration()
+                                .setDelegate(it)
+                                .setRequestListeners(List.of(new ExchangeLogger(
+                                        Logger.getLogger(KubernetesClient.class.getName()),
+                                        systemUTC(),
+                                        false))));
+                    }
+                    return it;
+                })
+                .setClientCustomizer(c -> c
+                        .version(HttpClient.Version.valueOf(httpVersion().replace('-', '_').replace('.', '_'))))
                 .setToken(token())
                 .setPrivateKey(privateKey())
                 .setPrivateKeyCertificate(privateKeyCertificate())

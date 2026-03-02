@@ -19,8 +19,10 @@ import io.yupiik.fusion.framework.api.scope.ApplicationScoped;
 import io.yupiik.fusion.json.JsonMapper;
 import io.yupiik.fusion.kubernetes.client.KubernetesClient;
 import io.yupiik.kubernetes.klim.client.model.k8s.Metadata;
-import io.yupiik.kubernetes.klim.client.model.k8s.Namespace;
+import io.yupiik.kubernetes.klim.client.model.k8s.MetadataOnly;
 import io.yupiik.kubernetes.klim.client.model.k8s.Namespaces;
+import io.yupiik.kubernetes.klim.client.model.k8s.Node;
+import io.yupiik.kubernetes.klim.client.model.k8s.Nodes;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -40,10 +42,17 @@ public class KubernetesFriend {
         this.jsonMapper = jsonMapper;
     }
 
+    public CompletionStage<List<Node>> findNodes(final KubernetesClient client) {
+        return fetch(client, "/api/v1/nodes?limit=1000", "Invalid node response: ", Nodes.class)
+                .thenApply(n -> n.items().stream()
+                        .filter(Objects::nonNull)
+                        .toList());
+    }
+
     public CompletionStage<List<String>> findNamespaces(final KubernetesClient client) {
         return fetch(client, "/api/v1/namespaces?limit=1000", "Invalid namespace response: ", Namespaces.class)
                 .thenApply(n -> n.items().stream()
-                        .map(Namespace::metadata)
+                        .map(MetadataOnly::metadata)
                         .filter(Objects::nonNull)
                         .map(Metadata::name)
                         .sorted()
